@@ -1,7 +1,7 @@
 <template>
   <nav class="navbar navbar-default">
     <div class="navbar-header">
-      <router-link to="/" class="navbar-brand"> The Ultimate Startup Battle Ground</router-link>
+      <router-link to="/" class="navbar-brand">Yacht Handicap</router-link>
     </div>
     <ul class="nav navbar-nav navbar-right">
       <li>

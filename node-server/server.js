@@ -6,6 +6,12 @@ const jwt = require('express-jwt');
 const jwks = require('jwks-rsa');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const fs = require('fs');
+const csv = require('csv');
+const parse = csv.parse({columns: true});
+let output = [];
+let record=[];
+const input = fs.createReadStream('ClubListing.csv');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -26,7 +32,7 @@ const authCheck = jwt({
 
 
 app.get('/api/battles/public', (req, res) => {
-  let publicBattles = [
+  const publicBattles = [
   {
     id: 1111,
     name: 'Startup NYC',
@@ -83,11 +89,11 @@ app.get('/api/battles/public', (req, res) => {
   }];
 
   res.json(publicBattles);
-})
+});
 
 
 app.get('/api/battles/private', authCheck, (req,res) => {
-  let privateBattles = [
+  const privateBattles = [
   {
     id: 2111,
     name: 'Startup Seattle',
@@ -144,7 +150,41 @@ app.get('/api/battles/private', authCheck, (req,res) => {
   }];
 
   res.json(privateBattles);
-})
+});
+
+// app.get('/api/private/v1/boats', authCheck, (req,res) => {
+app.get('/api/public/v1/boats', (req,res) => {
+  // TODO: Confirm that loading is complete
+  res.json(output);
+});
+
+app.get('/api/public/v1/boat/:boat_id', (req,res) => { //(/d+) limit to digits
+  // TODO: Confirm that loading is complete
+  console.log(output[req.params['boat_id']]);
+  res.json(output[req.params['boat_id']]);
+});
+
+parse.on('readable', function(){
+  while(record = parse.read()){
+    // After Node v7 will be able to replace with object.values
+    // Array.prototype.push.apply(output, Object.keys(record).map((k) => record[k]));
+    //Array.prototype.push.apply(output, record);
+    output.push(record)
+  }
+});
+
+parse.on('error', function(err){
+  console.log(err.message);
+});
+
+parse.on('finish', function(){
+//  console.log(JSON.stringify(output));
+  console.log('Loaded ' + output.length + ' records');
+  parse.end();
+});
+
+input.pipe(parse);
 
 app.listen(3333);
 console.log('Listening on localhost:3333');
+

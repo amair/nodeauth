@@ -11,7 +11,7 @@ const SCOPE = 'full_access';
 const AUDIENCE = 'https://www.yachthandicap.org';
 
 
-let auth = new auth0.WebAuth({
+const auth = new auth0.WebAuth({
   clientID: CLIENT_ID,
   domain: CLIENT_DOMAIN,
 });
@@ -19,32 +19,6 @@ let auth = new auth0.WebAuth({
 const router = new Router({
   mode: 'history',
 });
-
-export function login() {
-  auth.authorize({
-    responseType: 'token id_token',
-    redirectUri: REDIRECT,
-    audience: AUDIENCE,
-    scope: SCOPE,
-  });
-}
-
-export function logout() {
-  clearIdToken();
-  clearAccessToken();
-  router.go('/');
-}
-
-export function requireAuth(to, from, next) {
-  if (!isLoggedIn()) {
-    next({
-      path: '/',
-      query: { redirect: to.fullPath },
-    });
-  } else {
-    next();
-  }
-}
 
 export function getIdToken() {
   return localStorage.getItem(ID_TOKEN_KEY);
@@ -62,9 +36,40 @@ function clearAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
+function getTokenExpirationDate(encodedToken) {
+  const token = decode(encodedToken);
+  if (!token.exp) { return null; }
+
+  const date = new Date(0);
+  date.setUTCSeconds(token.exp);
+
+  return date;
+}
+
+function isTokenExpired(token) {
+  const expirationDate = getTokenExpirationDate(token);
+  return expirationDate < new Date();
+}
+
+export function isLoggedIn() {
+  const idToken = getIdToken();
+  return !!idToken && !isTokenExpired(idToken);
+}
+
+export function requireAuth(to, from, next) {
+  if (!isLoggedIn()) {
+    next({
+      path: '/',
+      query: { redirect: to.fullPath },
+    });
+  } else {
+    next();
+  }
+}
+
 // Helper function that will allow us to extract the access_token and id_token
 function getParameterByName(name) {
-  let match = RegExp('[#&]' + name + '=([^&]*)').exec(window.location.hash);
+  const match = RegExp('[#&]' + name + '=([^&]*)').exec(window.location.hash);
   return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
 }
 
@@ -80,22 +85,17 @@ export function setIdToken() {
   localStorage.setItem(ID_TOKEN_KEY, idToken);
 }
 
-export function isLoggedIn() {
-  const idToken = getIdToken();
-  return !!idToken && !isTokenExpired(idToken);
+export function login() {
+  auth.authorize({
+    responseType: 'token id_token',
+    redirectUri: REDIRECT,
+    audience: AUDIENCE,
+    scope: SCOPE,
+  });
 }
 
-function getTokenExpirationDate(encodedToken) {
-  const token = decode(encodedToken);
-  if (!token.exp) { return null; }
-
-  const date = new Date(0);
-  date.setUTCSeconds(token.exp);
-
-  return date;
-}
-
-function isTokenExpired(token) {
-  const expirationDate = getTokenExpirationDate(token);
-  return expirationDate < new Date();
+export function logout() {
+  clearIdToken();
+  clearAccessToken();
+  router.go('/');
 }
