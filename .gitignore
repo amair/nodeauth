@@ -1,7 +1,7 @@
 .DS_Store
 */cmdnode_modules/
 */node_modules/*
-/dist/
+*/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -14,4 +14,4 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.csv
-package-lock.json
+node-server/server_config.json

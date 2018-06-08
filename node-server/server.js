@@ -8,6 +8,8 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const csv = require('csv');
+const MongoClient = require('mongodb').MongoClient;
+
 const parse = csv.parse({columns: true});
 let output = [];
 let record=[];
@@ -17,18 +19,20 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
+const serverConfig = require('./server_config.json');
+
 const authCheck = jwt({
   secret: jwks.expressJwtSecret({
-        cache: true,
-        rateLimit: true,
-        jwksRequestsPerMinute: 5,
-        jwksUri: "https://catslippers.eu.auth0.com/.well-known/jwks.json"
-    }),
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: "https://catslippers.eu.auth0.com/.well-known/jwks.json"
+  }),
     // This is the identifier we set when we created the API
     audience: 'https://www.yachthandicap.org',
     issuer: "https://catslippers.eu.auth0.com/",
     algorithms: ['RS256']
-});
+  });
 
 
 app.get('/api/battles/public', (req, res) => {
@@ -153,7 +157,7 @@ app.get('/api/battles/private', authCheck, (req,res) => {
 });
 
 // app.get('/api/private/v1/boats', authCheck, (req,res) => {
-app.get('/api/public/v1/boats', (req,res) => {
+  app.get('/api/public/v1/boats', (req,res) => {
   // TODO: Confirm that loading is complete
   res.json(output);
 });
@@ -169,7 +173,12 @@ parse.on('readable', function(){
     // After Node v7 will be able to replace with object.values
     // Array.prototype.push.apply(output, Object.keys(record).map((k) => record[k]));
     //Array.prototype.push.apply(output, record);
-    output.push(record)
+    output.push(record);
+    // db.collection('boats').save(record, (err, result) => {
+    //   if (err) return console.log(err)
+
+    //   console.log('saved to database')
+    // }
   }
 });
 
@@ -179,12 +188,28 @@ parse.on('error', function(err){
 
 parse.on('finish', function(){
 //  console.log(JSON.stringify(output));
-  console.log('Loaded ' + output.length + ' records');
-  parse.end();
+console.log('Loaded ' + output.length + ' records');
+parse.end();
 });
 
-input.pipe(parse);
 
-app.listen(3333);
-console.log('Listening on localhost:3333');
+if ((serverConfig.mongo_server_address === undefined) || (serverConfig.mongo_password === undefined) ) {
+  console.log('No mongo connection details');
+} else {
+  const uri = "mongodb+srv://app:".concat(serverConfig.mongo_password).concat("@").concat(serverConfig.mongo_server_address).concat("/test?retryWrites=true");
+  MongoClient.connect(uri, function(err, client) {
+    if (err) return console.log(err);
+    app.listen(3333, () => {
+      input.pipe(parse);
+      console.log('Listening on localhost:3333');
+    })
+  });
+}
+
+
+
+
+
+
+
 
