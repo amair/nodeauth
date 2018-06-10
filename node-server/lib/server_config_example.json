@@ -1,0 +1,4 @@
+{
+    "mongo_server_address": "URL of mongoDB server",
+    "mongo_password": "password for mongoDB server"
+}

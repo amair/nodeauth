@@ -12,6 +12,7 @@ var download = function(file_uri, filename, callback){
         var writeStream = fs.createWriteStream(dest);
 
         writeStream.on('finish', function(){
+            // Return the full path of the newly downloaded file
             resolve(dest);
         });
 

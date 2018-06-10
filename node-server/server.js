@@ -8,11 +8,10 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const csv = require('csv');
-const MongoClient = require('mongodb').MongoClient;
 const download = require('./lib/download');
+const mongodb = require('./lib/mongodb');
 
 const parse = csv.parse({columns: true});
-const serverConfig = require('./server_config.json');
 const csv_download_loc = "https://www.topyacht.com.au/rorc/data/ClubListing.csv"
 const csv_filename = 'ClubListing.csv';
 let output = [];
@@ -38,54 +37,21 @@ const authCheck = jwt({
   });
 
 
-app.get('/api/battles/public', (req, res) => {
-  const publicBattles = [
-  {
-    id: 1111,
-    name: 'Startup NYC',
-    sponsor: 'Alec Pesola',
-    seedFund: '500k'
-  },
-  {
-    id: 1113,
-    name: 'Startup Uttah',
-    sponsor: 'Diego Poza',
-    seedFund: '550k'
-  }];
-
-  res.json(publicBattles);
-});
-
-
-app.get('/api/battles/private', authCheck, (req,res) => {
-  const privateBattles = [
-  {
-    id: 2111,
-    name: 'Startup Seattle',
-    sponsor: 'Mark Zuckerberg',
-    seedFund: '10M'
-  },
-  {
-    id: 2112,
-    name: 'Startup Vegas',
-    sponsor: 'Bill Gates',
-    seedFund: '20M'
-  }];
-
-  res.json(privateBattles);
-});
-
 // app.get('/api/private/v1/boats', authCheck, (req,res) => {
   app.get('/api/public/v1/boats', (req,res) => {
-    if (boats_initialized) {
-      res.json(output);
+    if (boats_initialized == true) {
+      let boats=[];
+      mongodb.get_boats(function(err, boats) {
+        console.log("Retreived %s boats", boats.length);
+        res.json(boats);
+      });
     } else {
       res.status(449).send("Server still initializing");
     }
 });
 
 app.get('/api/public/v1/boat/:boat_id', (req,res) => { //(/d+) limit to digits
-    if (boats_initialized) {
+    if (boats_initialized == true) {
       console.log(output[req.params['boat_id']]);
       res.json(output[req.params['boat_id']]);
     } else {
@@ -96,11 +62,7 @@ app.get('/api/public/v1/boat/:boat_id', (req,res) => { //(/d+) limit to digits
 parse.on('readable', function(){
   while(record = parse.read()){
     output.push(record);
-    // db.collection('boats').save(record, (err, result) => {
-    //   if (err) return console.log(err)
-
-    //   console.log('saved to database')
-    // })
+    mongodb.store_boat(record);
   }
 });
 
@@ -115,26 +77,26 @@ parse.on('finish', function(){
   boats_initialized = true;
 });
 
+process.on('exit', function() {
+  console.log('Server is terminating.');
+  mongodb.close();
+});
 
-if ((serverConfig.mongo_server_address === undefined) || (serverConfig.mongo_password === undefined) ) {
-  console.log('No mongo connection details');
-} else {
-  const uri = "mongodb+srv://app:".concat(serverConfig.mongo_password).concat("@").concat(serverConfig.mongo_server_address).concat("/test?retryWrites=true");
-  MongoClient.connect(uri, function(err, client) {
-    if (err) return console.log(err);
-    app.listen(3333, () => {
-      download(csv_download_loc, csv_filename, function(err, csv_filepath){
-      if(err) return console.log (err);
-      console.log('Downloaded %s', csv_filepath);
+mongodb.connect();
 
-      const input = fs.createReadStream(csv_filepath);
-      input.pipe(parse);
-    });
+app.listen(3333, () => {
+  download(csv_download_loc, csv_filename, function(err, csv_filepath){
+    if(err) return console.log (err);
+    console.log('Downloaded %s', csv_filepath);
 
-    console.log('Listening on localhost:3333');
-    })
+    mongodb.initialize_boats();
+
+    const input = fs.createReadStream(csv_filepath);
+    input.pipe(parse);
   });
-}
+
+  console.log('Listening on localhost:3333');
+});
 
 
 
