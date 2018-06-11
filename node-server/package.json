@@ -1,14 +1,15 @@
 {
-  "name": "startup-battle",
+  "name": "YachthandicapRestServer",
   "version": "0.0.1",
-  "description": "",
+  "description": "APIs to drive the Yachthandicap application",
   "main": "server.js",
   "scripts": {
+    "pretest": "eslint --ignore-path ../.gitignore .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "author": "Auth0",
+  "author": "ajm",
   "license": "MIT",
   "dependencies": {
     "bluebird": "",

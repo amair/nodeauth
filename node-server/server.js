@@ -12,11 +12,11 @@ const download = require('./lib/download');
 const mongodb = require('./lib/mongodb');
 
 const parse = csv.parse({columns: true});
-const csv_download_loc = "https://www.topyacht.com.au/rorc/data/ClubListing.csv"
-const csv_filename = 'ClubListing.csv';
+const csvDownloadLoc = "https://www.topyacht.com.au/rorc/data/ClubListing.csv"
+const csvFilename = 'ClubListing.csv';
 let output = [];
 let record=[];
-let boats_initialized = false;
+let boatsInitialized = false;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -39,11 +39,10 @@ const authCheck = jwt({
 
 // app.get('/api/private/v1/boats', authCheck, (req,res) => {
   app.get('/api/public/v1/boats', (req,res) => {
-    if (boats_initialized == true) {
-      let boats=[];
-      mongodb.get_boats(function(err, boats) {
-        console.log("Retreived %s boats", boats.length);
-        res.json(boats);
+    if (boatsInitialized === true) {
+      mongodb.getBoats(function(err, boatList) {
+        console.log("Retreived %s boats", boatList.length);
+        res.json(boatList);
       });
     } else {
       res.status(449).send("Server still initializing");
@@ -51,7 +50,7 @@ const authCheck = jwt({
 });
 
 app.get('/api/public/v1/boat/:boat_id', (req,res) => { //(/d+) limit to digits
-    if (boats_initialized == true) {
+    if (boatsInitialized === true) {
       console.log(output[req.params['boat_id']]);
       res.json(output[req.params['boat_id']]);
     } else {
@@ -62,7 +61,7 @@ app.get('/api/public/v1/boat/:boat_id', (req,res) => { //(/d+) limit to digits
 parse.on('readable', function(){
   while(record = parse.read()){
     output.push(record);
-    mongodb.store_boat(record);
+    mongodb.storeBoat(record);
   }
 });
 
@@ -74,7 +73,7 @@ parse.on('finish', function(){
   //  console.log(JSON.stringify(output));
   console.log('Loaded ' + output.length + ' records');
   parse.end();
-  boats_initialized = true;
+  boatsInitialized = true;
 });
 
 process.on('exit', function() {
@@ -85,13 +84,13 @@ process.on('exit', function() {
 mongodb.connect();
 
 app.listen(3333, () => {
-  download(csv_download_loc, csv_filename, function(err, csv_filepath){
-    if(err) return console.log (err);
-    console.log('Downloaded %s', csv_filepath);
+  download(csvDownloadLoc, csvFilename, function(err, csvFilePath){
+    if (err) return console.log(err);
+    console.log('Downloaded %s', csvFilePath);
 
     mongodb.initialize_boats();
 
-    const input = fs.createReadStream(csv_filepath);
+    const input = fs.createReadStream(csvFilePath);
     input.pipe(parse);
   });
 
